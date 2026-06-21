@@ -14,11 +14,15 @@ see backend/export.py's self-test in `export_real_psd()`.
 
 Scope/limitations (documented honestly, not hidden):
   - 8-bit RGB only, no CMYK/indexed/16-bit support.
-  - Regular layers carry a full-opacity alpha channel (every layer is a fully
-    opaque rectangle, no soft/shaped edges) — only the bottommost "Background"
-    layer omits alpha, matching Photoshop's own convention for that special
-    locked layer type. Hidden layers use the layer "visible" flag, not pixel
-    alpha.
+  - Every layer, including Background, carries a full-opacity alpha channel
+    (every layer is a fully opaque rectangle, no soft/shaped edges). An
+    earlier version omitted alpha on the Background layer to mimic
+    Photoshop's special locked-Background convention; that turned out to
+    make Photoshop's compositor treat the alpha-less layer as transparent
+    by default instead of opaque (observed empirically — the canvas
+    rendered blank except for the alpha-bearing layers). All layers now
+    carry alpha uniformly to avoid that ambiguity. Hidden layers use the
+    layer "visible" flag, not pixel alpha.
   - No real layer masks, blending ranges, or effects (drop shadows etc.) —
     those sections are written as present-but-empty (length 0), which is
     valid per spec.

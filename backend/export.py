@@ -112,7 +112,6 @@ def export_real_psd(project_id, export_dir):
             "bbox": (left, top, right, bottom),
             "image": crop,
             "visible": bool(l["visible"]),
-            "include_alpha": l["role"] != "background",
         })
 
     if not psd_layers:
