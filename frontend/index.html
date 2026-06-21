@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LayerAI Studio — MVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">LayerAI <span class="brand-name-light">Studio</span></span>
+    </div>
+    <ol class="steps" id="steps">
+      <li data-step="upload" class="step active">Upload</li>
+      <li data-step="analyzing" class="step">Analyze</li>
+      <li data-step="workspace" class="step">Layers</li>
+      <li data-step="export" class="step">Export</li>
+    </ol>
+    <div class="topbar-meta" id="topbarMeta"></div>
+  </header>
+
+  <main id="main">
+
+    <!-- ===================== STEP 1: UPLOAD ===================== -->
+    <section class="view" id="view-upload">
+      <div class="upload-layout">
+        <div class="upload-copy">
+          <h1>Turn a flat image<br>back into layers.</h1>
+          <p class="upload-sub">Drop in an ad or marketing visual. LayerAI Studio pulls apart the background, hero product, headline, price, and CTA into a layer tree you can edit and export.</p>
+
+          <label class="dropzone" id="dropzone" for="fileInput">
+            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" hidden />
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="dropzone-title">Drop an image, or click to browse</span>
+            <span class="dropzone-sub">PNG, JPG, or WEBP · up to 20MB</span>
+          </label>
+          <div class="upload-error" id="uploadError" hidden></div>
+        </div>
+
+        <div class="upload-visual" aria-hidden="true">
+          <div class="layer-stack">
+            <div class="stack-card stack-card-bg">
+              <span class="stack-label">background</span>
+            </div>
+            <div class="stack-card stack-card-hero">
+              <span class="stack-hero-shape"></span>
+              <span class="stack-label">hero_product</span>
+            </div>
+            <div class="stack-card stack-card-headline">
+              <span class="stack-textline stack-textline-lg"></span>
+              <span class="stack-label">headline</span>
+            </div>
+            <div class="stack-card stack-card-price">
+              <span class="stack-textline stack-textline-sm"></span>
+              <span class="stack-label">price</span>
+            </div>
+            <div class="stack-card stack-card-cta">
+              <span class="stack-textline stack-textline-cta"></span>
+              <span class="stack-label">cta</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== STEP 2: ANALYZING ===================== -->
+    <section class="view" id="view-analyzing" hidden>
+      <div class="analyzing-layout">
+        <div class="analyzing-preview" id="analyzingPreview"></div>
+        <div class="analyzing-status">
+          <h2>Reading the layers</h2>
+          <ul class="pipeline-steps" id="pipelineSteps">
+            <li data-stage="detect"><span class="dot"></span>Detecting visual regions</li>
+            <li data-stage="segment"><span class="dot"></span>Isolating the hero product</li>
+            <li data-stage="ocr"><span class="dot"></span>Running OCR on text</li>
+            <li data-stage="classify"><span class="dot"></span>Classifying headline, price, CTA</li>
+            <li data-stage="tree"><span class="dot"></span>Building the layer tree</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== STEP 3+4: WORKSPACE (layer tree + light editor) ===================== -->
+    <section class="view" id="view-workspace" hidden>
+      <div class="workspace-layout">
+
+        <div class="canvas-pane">
+          <div class="canvas-toolbar">
+            <span class="canvas-title" id="canvasTitle">Untitled project</span>
+            <span class="canvas-dims" id="canvasDims"></span>
+          </div>
+          <div class="canvas-scroll">
+            <div class="canvas-frame" id="canvasFrame">
+              <img id="canvasImage" alt="Project image" />
+              <div class="bbox-layer" id="bboxLayer"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="layers-pane">
+          <div class="layers-pane-header">
+            <h3>Layers</h3>
+            <button class="btn-ghost-sm" id="mergeBtn" disabled>Merge selected</button>
+          </div>
+          <ol class="layer-list" id="layerList"></ol>
+          <div class="layers-pane-footer">
+            <span id="layerCount" class="muted-mono"></span>
+            <button class="btn-text-sm" id="historyToggle" type="button">Modification history</button>
+          </div>
+          <div class="history-panel" id="historyPanel" hidden></div>
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- ===================== STEP 5: EXPORT ===================== -->
+    <section class="view" id="view-export" hidden>
+      <div class="export-layout">
+        <h2>Export the rebuilt file</h2>
+        <p class="export-sub">Download the layer tree as structured JSON, or as a real .psd file with separate layers, ready to open in Photoshop.</p>
+
+        <div class="export-cards">
+          <div class="export-card">
+            <div class="export-card-icon">{ }</div>
+            <h4>LayerAI JSON</h4>
+            <p>Full layer tree, bounding boxes, roles, and OCR text in the LayerAI JSON schema. Good for piping into other tools.</p>
+            <button class="btn-primary" id="exportJsonBtn">Export JSON</button>
+          </div>
+          <div class="export-card">
+            <div class="export-card-icon">▦</div>
+            <h4>Photoshop File</h4>
+            <p>A real .psd file — opens directly in Photoshop with separate, independently movable layers for background, hero product, headline, price, CTA, and logo.</p>
+            <button class="btn-primary" id="exportPsdBtn">Export .PSD</button>
+          </div>
+        </div>
+
+        <div class="export-history" id="exportHistory"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
