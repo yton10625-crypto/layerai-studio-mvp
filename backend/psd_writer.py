@@ -14,8 +14,11 @@ see backend/export.py's self-test in `export_real_psd()`.
 
 Scope/limitations (documented honestly, not hidden):
   - 8-bit RGB only, no CMYK/indexed/16-bit support.
-  - No alpha channel — every layer is fully opaque; hidden layers use the
-    layer "visible" flag, not pixel alpha.
+  - Regular layers carry a full-opacity alpha channel (every layer is a fully
+    opaque rectangle, no soft/shaped edges) — only the bottommost "Background"
+    layer omits alpha, matching Photoshop's own convention for that special
+    locked layer type. Hidden layers use the layer "visible" flag, not pixel
+    alpha.
   - No real layer masks, blending ranges, or effects (drop shadows etc.) —
     those sections are written as present-but-empty (length 0), which is
     valid per spec.
@@ -49,16 +52,21 @@ def _channel_bytes(crop_img):
     return r.tobytes(), g.tobytes(), b.tobytes()
 
 
-def _layer_record_and_channel_data(name, bbox, crop_img, visible=True):
+def _layer_record_and_channel_data(name, bbox, crop_img, visible=True, include_alpha=True):
     """bbox = (left, top, right, bottom) in canvas coordinates."""
     left, top, right, bottom = bbox
+    w, h = right - left, bottom - top
     r_bytes, g_bytes, b_bytes = _channel_bytes(crop_img)
 
+    channels = [(0, r_bytes), (1, g_bytes), (2, b_bytes)]
+    if include_alpha:
+        channels.append((-1, b"\xff" * (w * h)))  # fully opaque alpha plane
+
     record = struct.pack(">iiii", top, left, bottom, right)
-    record += struct.pack(">H", 3)  # 3 channels: R, G, B (no alpha)
+    record += struct.pack(">H", len(channels))
 
     channel_data = b""
-    for channel_id, data in ((0, r_bytes), (1, g_bytes), (2, b_bytes)):
+    for channel_id, data in channels:
         compressed_len = 2 + len(data)  # 2 bytes for the compression-method field
         record += struct.pack(">hI", channel_id, compressed_len)
         channel_data += struct.pack(">H", 0) + data  # compression = 0 (raw)
@@ -83,7 +91,9 @@ def write_psd(path, width, height, composite_rgb_img, layers):
     """
     layers: ordered BOTTOM-to-TOP (matches Photoshop's layer list semantics
     in the file format — first entry written is the bottommost layer).
-    Each item: {"name": str, "bbox": (left, top, right, bottom), "image": PIL Image, "visible": bool}
+    Each item: {"name": str, "bbox": (left, top, right, bottom), "image": PIL Image,
+    "visible": bool, "include_alpha": bool (default True; pass False for the
+    bottommost Background layer)}
     composite_rgb_img: full-canvas PIL Image used as the flattened preview
     (what non-layer-aware viewers / thumbnails show).
     """
@@ -99,7 +109,8 @@ def write_psd(path, width, height, composite_rgb_img, layers):
     layer_channel_data = b""
     for layer in layers:
         rec, chdata = _layer_record_and_channel_data(
-            layer["name"], layer["bbox"], layer["image"], layer.get("visible", True)
+            layer["name"], layer["bbox"], layer["image"],
+            layer.get("visible", True), layer.get("include_alpha", True),
         )
         layer_records += rec
         layer_channel_data += chdata
